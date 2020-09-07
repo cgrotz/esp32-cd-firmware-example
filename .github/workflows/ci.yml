@@ -18,3 +18,42 @@ jobs:
       with:
         name: firmware_esp32
         path: .pio/build/m5stack-core-esp32/firmware.bin
+    - id: create_sm
+      name: Create Software Module
+      uses: cgrotz/hawkbit-create-software-module-action@v4
+      with:
+        hawkbit-tenant: ${{ secrets.ROLLOUTS_TENANT }}
+        hawkbit-username: ${{ secrets.ROLLOUTS_USERNAME }}
+        hawkbit-password: ${{ secrets.ROLLOUTS_PASSWORD }}
+        software-module-name: Beta Firmware
+        software-module-type: Application
+        software-module-version: ${{ steps.vars.outputs.sha_short }}
+    - name: Upload Artifact
+      uses: cgrotz/hawkbit-upload-artifact-action@v2
+      with:
+        file-path: .pio/build/m5stack-core-esp32/firmware.bin
+        software-module-id: ${{ steps.create_sm.outputs.software-module-id }}
+        hawkbit-tenant: ${{ secrets.ROLLOUTS_TENANT }}
+        hawkbit-username: ${{ secrets.ROLLOUTS_USERNAME }}
+        hawkbit-password: ${{ secrets.ROLLOUTS_PASSWORD }}
+    - id: create_ds
+      name: Create Distribution Set
+      uses: cgrotz/hawkbit-create-distribution-set-action@v5
+      with:
+        hawkbit-tenant: ${{ secrets.ROLLOUTS_TENANT }}
+        hawkbit-username: ${{ secrets.ROLLOUTS_USERNAME }}
+        hawkbit-password: ${{ secrets.ROLLOUTS_PASSWORD }}
+        distribution-set-name: Beta Firmware
+        distribution-set-type: app
+        distribution-set-version: ${{ steps.vars.outputs.sha_short }}
+        software-module-ids: ${{ steps.create_sm.outputs.software-module-id }}
+    - name: Assign distribution set to target filter
+      uses: cgrotz/hawkbit-assign-ds-to-target-filter-action@v8
+      with:
+        hawkbit-tenant: ${{ secrets.ROLLOUTS_TENANT }}
+        hawkbit-username: ${{ secrets.ROLLOUTS_USERNAME }}
+        hawkbit-password: ${{ secrets.ROLLOUTS_PASSWORD }}
+        target-filter-name: Beta Filter
+        target-filter-type: forced
+        target-filter-weight: 200
+        distribution-set-id: ${{ steps.create_ds.outputs.distribution-set-id }}
